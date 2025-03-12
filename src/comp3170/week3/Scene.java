@@ -18,6 +18,7 @@ import comp3170.Shader;
 import comp3170.ShaderLibrary;
 
 public class Scene {
+	private static final float TAU = (float) Math.PI * 2;
 
 	final private String VERTEX_SHADER = "vertex.glsl";
 	final private String FRAGMENT_SHADER = "fragment.glsl";
@@ -28,6 +29,16 @@ public class Scene {
 	private int indexBuffer;
 	private Vector3f[] colours;
 	private int colourBuffer;
+	
+	private Matrix4f matrix;
+	private Matrix4f dummyMat;
+	
+	private static final float SHIP_OFFSET = 0.6f;
+	private static final float SHIP_SCALE = 0.3f;
+	private static final float SHIP_ROTATION_SPEED = TAU / 12;
+	private float currRotation= 0;
+	
+	private long oldTime = System.currentTimeMillis();
 
 	private Shader shader;
 
@@ -77,22 +88,37 @@ public class Scene {
 			// @formatter:on
 
 		indexBuffer = GLBuffers.createIndexBuffer(indices);
-
+		
+		matrix = new Matrix4f();
+		dummyMat = new Matrix4f();
 	}
 
 	public void draw() {
+		update();
+		
+		matrix = matrix.identity();
+		matrix = matrix.mul(rotationMatrix(currRotation,dummyMat)).mul(translationMatrix(SHIP_OFFSET, 0f, dummyMat)).mul(scaleMatrix(SHIP_SCALE, SHIP_SCALE,dummyMat));
 		
 		shader.enable();
 		// set the attributes
 		shader.setAttribute("a_position", vertexBuffer);
 		shader.setAttribute("a_colour", colourBuffer);
+		
+		shader.setUniform("matrix", matrix);
 
 		// draw using index buffer
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
 		
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-		glDrawElements(GL_TRIANGLES, indices.length, GL_UNSIGNED_INT, 0);
+		glDrawElements(GL_, indices.length, GL_UNSIGNED_INT, 0);
 
+	}
+	
+	private void update() {
+		long time = System.currentTimeMillis();
+		float dt = (time - oldTime) / 1000f;
+		oldTime = time;
+		currRotation += SHIP_ROTATION_SPEED * dt;
 	}
 
 	/**
@@ -111,7 +137,7 @@ public class Scene {
 
 		//     [ 1 0 0 tx ]
 		// T = [ 0 1 0 ty ]
-	    //     [ 0 0 0 0  ]
+	    //     [ 0 0 1 0  ]
 		//     [ 0 0 0 1  ]
 
 		// Perform operations on only the x and y values of the T vec. 
@@ -133,8 +159,21 @@ public class Scene {
 	 */
 
 	public static Matrix4f rotationMatrix(float angle, Matrix4f dest) {
+		// clear the matrix to the identity matrix
+		dest.identity();
 
-		// TODO: Your code here
+		//     [ c(a) -s(a) 0 0 ]
+		// T = [ s(a)  c(a) 0 0 ]
+	    //     [  0     0   1 0 ]
+		//     [  0     0   0 1 ]
+
+		// Perform operations on only the x and y values of the T vec. 
+		// Leaves the z value alone, as we are only doing 2D transformations.
+		
+		dest.m00((float)Math.cos(angle));
+		dest.m10((float)-Math.sin(angle));
+		dest.m01((float)Math.sin(angle));
+		dest.m11((float)Math.cos(angle));
 
 		return dest;
 	}
@@ -150,8 +189,19 @@ public class Scene {
 	 */
 
 	public static Matrix4f scaleMatrix(float sx, float sy, Matrix4f dest) {
+		// clear the matrix to the identity matrix
+		dest.identity();
 
-		// TODO: Your code here
+		//     [ sx 0  0  0 ]
+		// T = [ 0  sy 0  0 ]
+	    //     [ 0  0  1  0 ]
+		//     [ 0  0  0  1 ]
+
+		// Perform operations on only the x and y values of the T vec. 
+		// Leaves the z value alone, as we are only doing 2D transformations.
+		
+		dest.m00(sx);
+		dest.m11(sy);
 
 		return dest;
 	}
